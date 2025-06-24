@@ -50,20 +50,20 @@ class MaskedImageModeling(nn.Module):
         return reconstructed, mask, x
 
 
-# 损失函数定义
-class SSLLoss(nn.Module):
-    """自监督学习损失（文献式9）"""
-
-    def __init__(self):
-        super().__init__()
-        self.l1_loss = nn.L1Loss()
-
-    def forward(self, reconstructed, mask, original):
-        # 特征级L1损失
-        feat_loss = self.l1_loss(reconstructed, original)
-        # 像素级L1损失（仅掩码区域）
-        pixel_loss = self.l1_loss(reconstructed * mask, original * mask)
-        return feat_loss + pixel_loss
+# # 损失函数定义
+# class SSLLoss(nn.Module):
+#     """自监督学习损失（文献式9）"""
+#
+#     def __init__(self):
+#         super().__init__()
+#         self.l1_loss = nn.L1Loss()
+#
+#     def forward(self, reconstructed, mask, original):
+#         # 特征级L1损失
+#         feat_loss = self.l1_loss(reconstructed, original)
+#         # 像素级L1损失（仅掩码区域）
+#         pixel_loss = self.l1_loss(reconstructed * mask, original * mask)
+#         return feat_loss + pixel_loss
 
 
 class SegmentationLoss(nn.Module):
