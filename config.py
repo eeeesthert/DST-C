@@ -4,6 +4,17 @@ import torch
 def get_config():
     """实验配置参数（对应文献表1-3与4.2节）"""
     return {
+        "data_path": "path/to/your/data",  # 改为可配置路径
+        "num_classes": 2,
+        "seed": 42,  # 添加随机种子
+        "augmentation": {
+            "rotate_range": 15,  # 可配置的数据增强参数
+            "elastic_deformation": True
+        },
+        "postprocessing": {
+            "threshold": 0.5,  # 可配置的后处理参数
+            "min_volume": 50
+        },
         "data_dir": "./data/ABVS",  # 数据目录结构
         "in_channels": 1,  # 输入通道数
         "out_channels": 1,  # 输出通道数（二分类）

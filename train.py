@@ -12,6 +12,17 @@ from metrics import calculate_dice, calculate_all_metrics
 from model import DSTC3D
 from proprocessing import postprocess_segmentation
 
+def set_seed(seed):
+    """设置全局随机种子，确保实验可复现"""
+    import random
+    import numpy as np
+    import torch
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
 
 def train_ssl_model(ssl_model, ssl_loss, optimizer, train_loader, device, epochs=200):
     """自监督预训练函数（文献4.5节SSL实验）"""
@@ -105,6 +116,7 @@ def train_segmentation_model(model, seg_loss, optimizer, train_loader, val_loade
 def train_full_pipeline(config):
     """端到端训练流程（文献4.3-4.8节实验设置）"""
     # 1. 数据加载
+    set_seed(config["seed"])
     train_loader, val_loader = get_data_loaders(config)
     print(f"训练集大小: {len(train_loader.dataset)}, 验证集大小: {len(val_loader.dataset)}")
 
