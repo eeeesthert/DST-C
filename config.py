@@ -4,7 +4,7 @@ import torch
 def get_config():
     """实验配置参数（对应文献表1-3与4.2节）"""
     return {
-        "data_path": "path/to/your/data",  # 改为可配置路径
+        "data_path": "./data",  # 改为可配置路径
         "num_classes": 2,
         "seed": 42,  # 添加随机种子
         "augmentation": {
@@ -15,7 +15,7 @@ def get_config():
             "threshold": 0.5,  # 可配置的后处理参数
             "min_volume": 50
         },
-        "data_dir": "./data/ABVS",  # 数据目录结构
+        "data_dir": "./data",  # 数据目录结构
         "in_channels": 1,  # 输入通道数
         "out_channels": 1,  # 输出通道数（二分类）
         "feature_channels": 64,  # 特征通道数（文献图1）
@@ -40,5 +40,6 @@ def get_config():
         "min_volume": 50,  # 最小区域体积（体素数）
         "max_volume": 5000,  # 最大区域体积
         "alpha1": 0.3,  # 区域生长参数1
-        "alpha2": 0.5  # 区域生长参数2
+        "alpha2": 0.5 , # 区域生长参数2
+        "normalize": True  # 添加 normalize 键并设置默认值
     }
