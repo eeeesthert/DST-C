@@ -23,7 +23,7 @@ def get_config():
         "patch_size": 128,  # 训练补丁大小
         "batch_size": 1,  # 批量大小（受GPU内存限制）
         "num_workers": 4,  # 数据加载线程数
-        "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+        "device": torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
 
         # 自监督参数（文献4.5节表3）
         "use_ssl": True,

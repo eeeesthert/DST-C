@@ -155,7 +155,7 @@ def train_full_pipeline(config):
 
     # 3. 自监督预训练（文献4.5节SSL实验）
     if config["use_ssl"]:
-        ssl_model = SimMIMPreTrainer(model, config["mask_ratio"], config["patch_size"])
+        ssl_model = SimMIMPreTrainer(model, config["feature_channels"], config["mask_ratio"], config["patch_size"])
         ssl_loss = SSLLoss()
         ssl_optimizer = torch.optim.AdamW(
             ssl_model.parameters(),
