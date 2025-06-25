@@ -113,6 +113,9 @@ class SimMIMPreTrainer(nn.Module):
         # 1. 生成并应用掩码
         mask = self._generate_3d_mask(x.shape, x)
         masked_x = x * mask
+        # 在 SSL.py 的 forward 方法中添加调试代码
+        print(f"masked_x shape: {masked_x.shape}")
+        print(f"masked_x size: {masked_x.numel()}")
 
         # 2. 双分支特征提取
         cnn_features = self.base_model.cnn_branch(masked_x)
