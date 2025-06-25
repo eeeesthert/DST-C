@@ -92,9 +92,10 @@ class DSTBranch(nn.Module):
         )
 
         # 位置编码
-        self.pos_embed = nn.Parameter(
-            torch.zeros(1, feature_channels, 32, 32, 32)  # 假设输入尺寸为128x128x128
-        )
+        # self.pos_embed = nn.Parameter(
+        #     torch.zeros(1, feature_channels, 32, 32, 32)  # 假设输入尺寸为128x128x128
+        # )
+        self.pos_embed = None  # 删除硬编码
 
         # DST块（文献图2扩张采样Transformer）
         self.dst_blocks = nn.ModuleList([
@@ -108,24 +109,57 @@ class DSTBranch(nn.Module):
             scale_factor=4, mode="trilinear", align_corners=True
         )
 
+    # def forward(self, x):
+    #     """前向传播（文献3.2节DST分支流程）"""
+    #     # 补丁嵌入
+    #     x = self.patch_embed(x)
+    #     B, C, Z, Y, X = x.shape
+    #
+    #     # 展平为序列 + 位置编码
+    #     x = x.flatten(2).transpose(1, 2)  # [B, N, C]
+    #     x = x + self.pos_embed.flatten(2).transpose(1, 2)
+    #
+    #     # 通过DST块（文献图2）
+    #     for block in self.dst_blocks:
+    #         x = block(x)
+    #
+    #     # 恢复为3D特征图
+    #     x = x.transpose(1, 2).reshape(B, C, Z, Y, X)
+    #     x = self.upsample(x)
+    #
+    #     return x
     def forward(self, x):
-        """前向传播（文献3.2节DST分支流程）"""
+        # 对输入补零，使其是4的倍数
+        pad_z = (4 - x.shape[2] % 4) % 4
+        pad_y = (4 - x.shape[3] % 4) % 4
+        pad_x = (4 - x.shape[4] % 4) % 4
+        x = F.pad(x, (0, pad_x, 0, pad_y, 0, pad_z))  # 最后三个维度是 (X, Y, Z)
+
         # 补丁嵌入
         x = self.patch_embed(x)
         B, C, Z, Y, X = x.shape
 
-        # 展平为序列 + 位置编码
-        x = x.flatten(2).transpose(1, 2)  # [B, N, C]
-        x = x + self.pos_embed.flatten(2).transpose(1, 2)
+        # 位置编码
+        if self.pos_embed is None or self.pos_embed.shape != (1, C, Z, Y, X):
+            self.pos_embed = nn.Parameter(
+                torch.zeros(1, C, Z, Y, X, device=x.device),
+                requires_grad=True
+            )
 
-        # 通过DST块（文献图2）
+        x = x + self.pos_embed
+
+        # 展平为序列
+        x = x.flatten(2).transpose(1, 2)  # [B, N, C]
+
+        # DST
         for block in self.dst_blocks:
             x = block(x)
 
-        # 恢复为3D特征图
+        # 恢复3D形状
         x = x.transpose(1, 2).reshape(B, C, Z, Y, X)
-        x = self.upsample(x)
 
+        # 上采样
+        x = self.upsample(x)
         return x
 
 
@@ -229,9 +263,10 @@ class DilatedSamplingTransformerBlock(nn.Module):
         self.proj = nn.Linear(dim, dim)
 
     def _generate_dilation_mask(self, seq_len):
-        """生成扩张采样索引（文献图2采样逻辑）"""
-        # 假设 seq_len 是一个完全立方数
-        side_len = int(seq_len ** (1/3))
+        side_len = round(seq_len ** (1 / 3))
+        if side_len ** 3 != seq_len:
+            return torch.arange(0, seq_len, self.dilation)
+
         coords = torch.meshgrid(
             torch.arange(side_len),
             torch.arange(side_len),
@@ -240,14 +275,14 @@ class DilatedSamplingTransformerBlock(nn.Module):
         )
         coords = torch.stack(coords, dim=-1).float()
         center = side_len // 2
-
-        # 计算到中心的距离
         distances = torch.sqrt(torch.sum((coords - center) ** 2, dim=-1))
-        # 选择扩张间隔的点
         mask = (distances % self.dilation == 0) | (distances == 0)
-        return mask.flatten()
+        return mask.flatten().nonzero(as_tuple=True)[0]
+        print(f"attn.shape = {attn.shape}, N = {N}, dilation_mask.shape = {dilation_mask.shape}")
+
 
     def forward(self, x):
+
         """扩张采样自注意力计算（文献式1-3）"""
         B, N, C = x.shape
         qkv = self.qkv(x).reshape(B, N, 3, C).permute(2, 0, 1, 3)
