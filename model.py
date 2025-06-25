@@ -129,66 +129,80 @@ class DSTBranch(nn.Module):
     #
     #     return x
     def forward(self, x):
-        print(f"DST input shape: {x.shape}")
-        # 在每个层后添加形状打印
-        for i, layer in enumerate(self.layers):
-            x = layer(x)
-            print(f"After layer {i}: {x.shape}")
-        return x
-        # 对输入补零，使其是4的倍数
-        pad_z = (4 - x.shape[2] % 4) % 4
-        pad_y = (4 - x.shape[3] % 4) % 4
-        pad_x = (4 - x.shape[4] % 4) % 4
-        x = F.pad(x, (0, pad_x, 0, pad_y, 0, pad_z))  # 最后三个维度是 (X, Y, Z)
+        # print(f"DST input shape: {x.shape}")
+        # # 在每个层后添加形状打印
+        # for i, layer in enumerate(self.layers):
+        #     x = layer(x)
+        #     print(f"After layer {i}: {x.shape}")
+        # return x
+        # # 对输入补零，使其是4的倍数
+        # pad_z = (4 - x.shape[2] % 4) % 4
+        # pad_y = (4 - x.shape[3] % 4) % 4
+        # pad_x = (4 - x.shape[4] % 4) % 4
+        # x = F.pad(x, (0, pad_x, 0, pad_y, 0, pad_z))  # 最后三个维度是 (X, Y, Z)
+        #
+        # # 补丁嵌入
+        # x = self.patch_embed(x)
+        # B, C, Z, Y, X = x.shape
+        #
+        # # 位置编码
+        # if self.pos_embed is None or self.pos_embed.shape != (1, C, Z, Y, X):
+        #     self.pos_embed = nn.Parameter(
+        #         torch.zeros(1, C, Z, Y, X, device=x.device),
+        #         requires_grad=True
+        #     )
+        #
+        # x = x + self.pos_embed
+        #
+        # # 展平为序列
+        # x = x.flatten(2).transpose(1, 2)  # [B, N, C]
+        #
+        # # DST
+        # for block in self.dst_blocks:
+        #     x = block(x)
+        # expected_size = B * C * Z * Y * X
+        # if x.numel() != expected_size:
+        #     print(f"Warning: Size mismatch. Expected {expected_size}, got {x.numel()}")
+        #     # 根据实际情况调整reshape参数
+        # # 在 model.py 第159行之前添加
+        # print(f"Before reshape - x shape: {x.shape}")
+        # print(f"Before reshape - x size: {x.numel()}")
+        # print(f"Target shape: [B={B}, C={C}, Z={Z}, Y={Y}, X={X}]")
+        # # 恢复3D形状
+        # # 获取实际的特征维度
+        # actual_features = x.size(-1)  # 64
+        # actual_tokens = x.size(1)  # 12
+        #
+        # # 计算合适的3D形状
+        # # 如果特征不足，需要调整网络结构或者改变reshape策略
+        # if x.numel() != B * C * Z * Y * X:
+        #     # 方案1：调整目标形状以匹配实际特征数量
+        #     # 例如：reshape为更小的3D体积
+        #     new_size = int(round((actual_features * actual_tokens / C) ** (1 / 3)))
+        #     print(f"Adjusting reshape to: [{B}, {C}, {new_size}, {new_size}, {new_size}]")
+        #     x = x.transpose(1, 2).reshape(B, C, new_size, new_size, new_size)
+        # else:
+        #     x = x.transpose(1, 2).reshape(B, C, Z, Y, X)
+        # # x = x.transpose(1, 2).reshape(B, C, Z, Y, X)
+        #
+        # # 上采样
+        # x = self.upsample(x)
+        # return x
+            print(f"DST input shape: {x.shape}")
 
-        # 补丁嵌入
-        x = self.patch_embed(x)
-        B, C, Z, Y, X = x.shape
+            children = list(self.children())
 
-        # 位置编码
-        if self.pos_embed is None or self.pos_embed.shape != (1, C, Z, Y, X):
-            self.pos_embed = nn.Parameter(
-                torch.zeros(1, C, Z, Y, X, device=x.device),
-                requires_grad=True
-            )
+            for i, child in enumerate(children):
+                if isinstance(child, nn.ModuleList):
+                    # 遍历ModuleList中的每个模块
+                    for module in child:
+                        x = module(x)
+                        print(f"After ModuleList module: {x.shape}")
+                else:
+                    x = child(x)
+                    print(f"After child {i}: {x.shape}")
 
-        x = x + self.pos_embed
-
-        # 展平为序列
-        x = x.flatten(2).transpose(1, 2)  # [B, N, C]
-
-        # DST
-        for block in self.dst_blocks:
-            x = block(x)
-        expected_size = B * C * Z * Y * X
-        if x.numel() != expected_size:
-            print(f"Warning: Size mismatch. Expected {expected_size}, got {x.numel()}")
-            # 根据实际情况调整reshape参数
-        # 在 model.py 第159行之前添加
-        print(f"Before reshape - x shape: {x.shape}")
-        print(f"Before reshape - x size: {x.numel()}")
-        print(f"Target shape: [B={B}, C={C}, Z={Z}, Y={Y}, X={X}]")
-        # 恢复3D形状
-        # 获取实际的特征维度
-        actual_features = x.size(-1)  # 64
-        actual_tokens = x.size(1)  # 12
-
-        # 计算合适的3D形状
-        # 如果特征不足，需要调整网络结构或者改变reshape策略
-        if x.numel() != B * C * Z * Y * X:
-            # 方案1：调整目标形状以匹配实际特征数量
-            # 例如：reshape为更小的3D体积
-            new_size = int(round((actual_features * actual_tokens / C) ** (1 / 3)))
-            print(f"Adjusting reshape to: [{B}, {C}, {new_size}, {new_size}, {new_size}]")
-            x = x.transpose(1, 2).reshape(B, C, new_size, new_size, new_size)
-        else:
-            x = x.transpose(1, 2).reshape(B, C, Z, Y, X)
-        # x = x.transpose(1, 2).reshape(B, C, Z, Y, X)
-
-        # 上采样
-        x = self.upsample(x)
-        return x
-
+            return x
 
 class SpatialChannelAttention(nn.Module):
     """空间通道注意力交互桥接（文献3.3节SCA模块）"""
