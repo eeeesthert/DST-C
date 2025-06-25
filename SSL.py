@@ -91,13 +91,13 @@ class SimMIMPreTrainer(nn.Module):
             nn.Conv3d(64, 1, kernel_size=1)
         )
 
-    def _generate_3d_mask(self, shape):
+    def _generate_3d_mask(self, shape, x):
         """生成3D随机掩码（文献3.4节掩码策略）"""
         B, C, Z, Y, X = shape
         num_patches = Z * Y * X
         num_mask = int(self.mask_ratio * num_patches)
 
-        mask = torch.ones((B, 1, Z, Y, X), device=shape[0].device)
+        mask = torch.ones((B, 1, Z, Y, X), device=x.device)
         for b in range(B):
             # 随机选择掩码位置（文献图5最佳参数：patch_size=4, ratio=0.4）
             indices = torch.randperm(num_patches)[:num_mask]
@@ -111,7 +111,7 @@ class SimMIMPreTrainer(nn.Module):
     def forward(self, x):
         """自监督前向传播（文献式9）"""
         # 1. 生成并应用掩码
-        mask = self._generate_3d_mask(x.shape)
+        mask = self._generate_3d_mask(x.shape, x)
         masked_x = x * mask
 
         # 2. 双分支特征提取

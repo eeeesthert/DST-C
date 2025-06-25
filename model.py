@@ -228,24 +228,23 @@ class DilatedSamplingTransformerBlock(nn.Module):
         self.qkv = nn.Linear(dim, dim * 3)
         self.proj = nn.Linear(dim, dim)
 
-        # 扩张采样掩码生成
-        self.dilation_mask = self._generate_dilation_mask(window_size, dilation)
-
-    def _generate_dilation_mask(self, window_size, dilation):
+    def _generate_dilation_mask(self, seq_len):
         """生成扩张采样索引（文献图2采样逻辑）"""
+        # 假设 seq_len 是一个完全立方数
+        side_len = int(seq_len ** (1/3))
         coords = torch.meshgrid(
-            torch.arange(window_size),
-            torch.arange(window_size),
-            torch.arange(window_size),
+            torch.arange(side_len),
+            torch.arange(side_len),
+            torch.arange(side_len),
             indexing='ij'
         )
         coords = torch.stack(coords, dim=-1).float()
-        center = window_size // 2
+        center = side_len // 2
 
         # 计算到中心的距离
         distances = torch.sqrt(torch.sum((coords - center) ** 2, dim=-1))
         # 选择扩张间隔的点
-        mask = (distances % dilation == 0) | (distances == 0)
+        mask = (distances % self.dilation == 0) | (distances == 0)
         return mask.flatten()
 
     def forward(self, x):
@@ -257,13 +256,17 @@ class DilatedSamplingTransformerBlock(nn.Module):
         # 计算注意力分数
         attn = (q @ k.transpose(-2, -1)) / (C ** 0.5)
 
+        # 生成扩张采样掩码
+        dilation_mask = self._generate_dilation_mask(N)
+
         # 应用扩张采样掩码（文献图2采样机制）
-        attn = attn[:, self.dilation_mask, :][:, :, self.dilation_mask]
+        attn = attn[:, dilation_mask, :][:, :, dilation_mask]
 
         # 软最大化与加权求和
         attn = F.softmax(attn, dim=-1)
-        x = (attn @ v[:, self.dilation_mask, :])
+        x = (attn @ v[:, dilation_mask, :])
 
         # 投影与残差连接
-        x = self.proj(x.flatten(1)) + x
+        x_proj = self.proj(x)
+        x = x_proj + x
         return x

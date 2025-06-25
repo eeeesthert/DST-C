@@ -412,14 +412,11 @@ class RandomRotation(object):
                         borderMode=cv2.BORDER_CONSTANT
                     )
 
-                    # 确保旋转后的切片形状和原始切片形状一致
-                    if img_rot.shape != (Y, X):
-                        img_rot = cv2.resize(img_rot, (X, Y))
-                    if label_rot.shape != (Y, X):
-                        label_rot = cv2.resize(label_rot, (X, Y), interpolation=cv2.INTER_NEAREST)
-
-                    rotated_img[c, z, y] = img_rot
-                    rotated_label[c, z, y] = label_rot
+                    # 确保形状一致
+                    if img_rot.shape == (X, Y):
+                        rotated_img[c, z, y] = img_rot
+                    if label_rot.shape == (X, Y):
+                        rotated_label[c, z, y] = label_rot
 
         return rotated_img, rotated_label
 
@@ -503,7 +500,10 @@ class RandomElasticDeformation(object):
                         cv2.INTER_NEAREST
                     )
 
-                    deformed_img[c, z_idx, y_idx] = img_deformed
-                    deformed_label[c, z_idx, y_idx] = label_deformed
+                    # 确保形状一致
+                    if img_deformed.shape == (Y, X):
+                        deformed_img[c, z_idx, y_idx] = img_deformed
+                    if label_deformed.shape == (Y, X):
+                        deformed_label[c, z_idx, y_idx] = label_deformed
 
         return deformed_img, deformed_label
