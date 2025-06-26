@@ -24,6 +24,8 @@ def get_config():
         "batch_size": 1,  # 批量大小（受GPU内存限制）
         "num_workers": 4,  # 数据加载线程数
         "device": torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+        "window_size": 7,  # DST窗口大小
+        "dilation_rates": [2, 4, 8],  # 膨胀率序列
 
         # 自监督参数（文献4.5节表3）
         "use_ssl": True,

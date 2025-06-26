@@ -1,5 +1,8 @@
 import numpy as np
 import torch
+# 需要安装: pip install medpy
+from medpy import metric
+
 
 
 def calculate_dice(preds, labels):
